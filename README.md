@@ -23,8 +23,13 @@ src/
 │   │               ├── Session.java        // Singleton: Holds the current logged-in User
 │   │               ├── UserList.java       // Handles File I/O for users.csv (Login/Registration)
 │   │               ├── UserEntries.java    // Handles File I/O for user.csv (Journal CRUD)
-│   │               └── APIManager.java     // Merged: Handles Weather/Mood API calls
-│   │
+│   │               ├── Weather.java        // Gets current weather via the open weather API
+│   │               ├── MoodAnalyzer.java   // Analyze the user's mood using HuggingFace model
+│   │               ├── Cipher.java         // Encode and decode stuff
+│   │               ├── Time.java           // Get current period of time (used by Weather class)
+│   │               ├── EnvLoader.java      // Loads environment variables/token
+│   │               └── API.java            // Handles GET and POST request
+
 │   └── resources/                      // UI Files, Styles & External Data
 │       ├── com/journalapp/view/        // FXML Files (Mirror Java package structure)
 │       │   ├── Main.fxml               // Contains the main BorderPane and the Sidebar/NavBar
