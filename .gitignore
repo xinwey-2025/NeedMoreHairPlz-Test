@@ -14,5 +14,8 @@ data/
 # iml
 *.iml
 
+# tokens
+.env
+
 # custom
 ignore/
