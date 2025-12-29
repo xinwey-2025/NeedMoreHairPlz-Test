@@ -1,4 +1,4 @@
-package main.java.com.journalapp;
+package com.journalapp;
 
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
@@ -8,8 +8,12 @@ import javafx.stage.Stage;
 
 public class App extends Application {
     @Override
-    public void start(Stage primaryStage) {
-
+    public void start(Stage primaryStage) throws Exception {
+        // This loads the initial view defined in your resources
+        Parent root = FXMLLoader.load(getClass().getResource("/com/journalapp/view/Auth.fxml"));
+        primaryStage.setTitle("Journal Application");
+        primaryStage.setScene(new Scene(root));
+        primaryStage.show();
     }
 
     public static void main(String[] args) {
