@@ -10,10 +10,26 @@ import javafx.scene.text.FontWeight;
 import java.time.LocalDate;
 import java.util.concurrent.CompletableFuture;
 
-// Import your Weather utility
+// Call weather and mood analyzer API
+import main.java.com.journalapp.model.Entry;
+import main.java.com.journalapp.util.UserEntries;
 import main.java.com.journalapp.util.Weather;
+import main.java.com.journalapp.util.MoodAnalyzer;
 
 public class EntryEditorController {
+
+    private Label condition;
+    private String fixWeather = "Loading...";
+
+    private static String currentUsername = "default";
+    private String username;
+
+    private UserEntries userEntries;
+    private String entryId = null;
+
+    public EntryEditorController() {
+        userEntries = new UserEntries(currentUsername);
+    }
 
     public VBox getView() {
         VBox layout = new VBox(20);
@@ -35,18 +51,19 @@ public class EntryEditorController {
 
         // --- WEATHER LOGIC START ---
         // Initial state: "Loading..."
-        Label condition = new Label("Weather: Loading... | Mood: (Pending)");
+        condition = new Label("Weather: Loading... | Mood: Analyzing...");
         condition.setFont(Font.font("Arial", FontWeight.BOLD, 12));
         condition.setStyle("-fx-text-fill: #666;");
 
         // Run the API call in the BACKGROUND so the app doesn't freeze
         CompletableFuture.runAsync(() -> {
             // 1. Fetch data (Slow operation)
-            String currentWeather = Weather.getCurrentWeather();
+            this.fixWeather = Weather.getCurrentWeather();
 
             // 2. Update UI (Must be on JavaFX Thread)
             Platform.runLater(() -> {
-                condition.setText("Weather: " + currentWeather + " | Mood: (Pending)");
+//                condition.setText("Weather: " + currentWeather + " | Mood: (Pending)");
+                updateStatus("Analyzing...");
             });
         });
         // --- WEATHER LOGIC END ---
@@ -72,33 +89,119 @@ public class EntryEditorController {
 
         VBox.setVgrow(textArea, Priority.ALWAYS);
 
-        // 4. Save Button
-        Button save = new Button("Save Entry");
-        save.setPrefWidth(150);
-        save.setPrefHeight(35);
-        save.setStyle(
-                "-fx-background-color: #3498db;" +
-                        "-fx-text-fill: white;" +
-                        "-fx-font-weight: bold;" +
-                        "-fx-font-size: 14px;" +
-                        "-fx-background-radius: 20;" +
-                        "-fx-cursor: hand;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 5, 0, 0, 1);"
-        );
+        // 4. Button list
+        Button[] actionButton = {new  Button("Save Entry"), new Button("Edit Entry"), new Button("Delete Entry")};
+        Button save = actionButton[0];
+        Button edit = actionButton[1];
+        Button delete = actionButton[2];
+
+        edit.setVisible(false);
+        delete.setVisible(false);
+
+        String btnStyle = "-fx-background-color: #3498db;" +
+                          "-fx-text-fill: white;" +
+                          "-fx-font-weight: bold;" +
+                          "-fx-font-size: 14px;" +
+                          "-fx-background-radius: 20;" +
+                          "-fx-cursor: hand;" +
+                          "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 5, 0, 0, 1);";
+
+        for (Button btn  : actionButton) {
+            btn.setPrefWidth(150);
+            btn.setPrefHeight(35);
+            btn.setStyle(btnStyle);
+
+            btn.managedProperty().bind(btn.visibleProperty());
+        }
+
+        HBox buttonBox = new HBox(10);
+        buttonBox.setAlignment(Pos.CENTER_LEFT);
+        buttonBox.getChildren().addAll(save, edit, delete);
 
         save.setOnAction(e -> {
             String content = textArea.getText().trim();
             if (content.isEmpty()) {
                 Alert alert = new Alert(Alert.AlertType.WARNING, "Please write something first!");
                 alert.showAndWait();
-            } else {
-                Alert alert = new Alert(Alert.AlertType.INFORMATION, "Journal saved successfully!");
-                alert.showAndWait();
-                textArea.clear();
+                return;
             }
+
+            save.setDisable(true);
+            save.setText("Analyzing mood...");
+
+            CompletableFuture.supplyAsync(() -> {
+                // Call mood analyzer API
+                return MoodAnalyzer.analyze(content);
+            }).thenAccept(mood -> {
+                // Update UI on the JavaFX thread
+                Platform.runLater(() -> {
+                    try {
+                        updateStatus(mood);
+
+                        if (this.entryId == null) {
+                            userEntries.createEntry(today, content, mood, fixWeather);
+
+                            for (Entry entry : userEntries.listEntries()) {
+                                if (entry.getDate().equals(today) &&
+                                        entry.getContent().equals(content) &&
+                                        entry.getMood().equals(mood)) {
+                                    this.entryId = entry.getId();
+                                    break;
+                                }
+                            }
+                        } else {
+                            userEntries.editEntry(this.entryId, today, content, mood, fixWeather);
+                        }
+
+                        save.setVisible(false);
+                        edit.setVisible(true);
+                        delete.setVisible(true);
+                        textArea.setEditable(false);
+
+                        Alert alert = new Alert(Alert.AlertType.INFORMATION, "Journal saved successfully!");
+                        alert.showAndWait();
+                    } finally {
+                        save.setText("Save Entry");
+                        save.setDisable(false);
+                    }
+                });
+            });
+
         });
 
-        layout.getChildren().addAll(header, infoLine, textArea, save);
+        edit.setOnAction(e -> {
+            textArea.setEditable(true);
+            textArea.setFocusTraversable(true); // Allow cursor focus
+            textArea.requestFocus();
+
+            edit.setVisible(false);
+            save.setVisible(true);
+        });
+
+        delete.setOnAction(e -> {
+            if (this.entryId != null) {
+                userEntries.deleteEntry(this.entryId);
+            }
+
+            textArea.clear();
+            this.entryId = null;
+
+            save.setVisible(true);
+            save.setText("Save Entry");
+            edit.setVisible(false);
+            delete.setVisible(false);
+
+            textArea.setEditable(true);
+
+            Alert alert = new Alert(Alert.AlertType.INFORMATION, "Journal deleted successfully!");
+            alert.showAndWait();
+        });
+
+        layout.getChildren().addAll(header, infoLine, textArea, buttonBox);
         return layout;
+    }
+
+    private void updateStatus(String mood) {
+        condition.setText("Weather: " + fixWeather + " | Mood: " + mood);
     }
 }
