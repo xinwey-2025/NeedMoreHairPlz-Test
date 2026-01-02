@@ -4,65 +4,63 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.Label;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.control.Separator;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
-import javafx.scene.layout.VBox;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
+import main.java.com.journalapp.model.Entry;
+import main.java.com.journalapp.util.UserEntries;
 
-import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
-import java.util.HashMap;
+import java.util.List;
 
 public class JournalPageController {
 
-    private final HashMap<LocalDate, String> diaryMap = new HashMap<>();
-    private final ObservableList<LocalDate> diaryDates = FXCollections.observableArrayList();
+    private final UserEntries userEntries;
+    private final ObservableList<Entry> diaryEntries = FXCollections.observableArrayList();
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy h:mm a");
 
-    public JournalPageController() {
-        // Initialize Mock Data
-        diaryMap.put(LocalDate.of(2025, 11, 24), "Lorem ipsum dolor sit amet\nMore text...");
-        diaryMap.put(LocalDate.of(2025, 11, 23), "Another reflective entry here...");
-        diaryMap.put(LocalDate.of(2025, 11, 22), "A sunny day with positive mood.");
-
-        diaryDates.addAll(diaryMap.keySet());
-        FXCollections.sort(diaryDates, Comparator.reverseOrder());
+    public JournalPageController(String username) {
+        this.userEntries = new UserEntries(username);
+        loadEntries();
     }
 
+    // 加载日记列表
+    private void loadEntries() {
+        diaryEntries.clear();
+        List<Entry> entries = userEntries.listEntries();
+        // 按日期倒序
+        entries.sort(Comparator.comparing(Entry::getDate).reversed());
+        diaryEntries.addAll(entries);
+    }
+
+    // 页面刷新方法
+    public void refresh() {
+        loadEntries();
+    }
+
+    // 返回页面视图
     public VBox getView() {
         VBox contentBox = new VBox(10);
         contentBox.setPadding(new Insets(30, 50, 30, 50));
 
-        // NOTE: We do NOT set a background color here.
-        // This allows the MainController's pink/blue gradient to show through!
-
-        // Page Title
         Label pageTitle = new Label("Journals");
         pageTitle.setStyle("-fx-font-size: 28px; -fx-font-weight: 300; -fx-text-fill: #333333;");
 
         Separator separator = new Separator();
-        // Make separator slightly visible but subtle
         separator.setOpacity(0.4);
 
-        // Scroll Pane
         ScrollPane scrollPane = new ScrollPane();
         scrollPane.setFitToWidth(true);
-        // Make the ScrollPane and its viewport completely transparent
         scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
         VBox.setVgrow(scrollPane, Priority.ALWAYS);
 
-        // Journal List Container
         VBox journalListContainer = new VBox(20);
         journalListContainer.setPadding(new Insets(10, 0, 0, 0));
-        journalListContainer.setStyle("-fx-background-color: transparent;"); // Transparent container
+        journalListContainer.setStyle("-fx-background-color: transparent;");
 
-        for (LocalDate date : diaryDates) {
-            String content = diaryMap.get(date);
-            journalListContainer.getChildren().add(createJournalCard(date, content));
+        // 动态加载每条日记
+        for (Entry entry : diaryEntries) {
+            journalListContainer.getChildren().add(createJournalCard(entry));
         }
 
         scrollPane.setContent(journalListContainer);
@@ -71,65 +69,83 @@ public class JournalPageController {
         return contentBox;
     }
 
-    private VBox createJournalCard(LocalDate date, String content) {
+    // 创建每条日记卡片
+    private VBox createJournalCard(Entry entry) {
         VBox card = new VBox(5);
         card.setPadding(new Insets(15, 20, 15, 20));
 
-        // --- STYLE CONSTANTS ---
-        // 1. Normal State: Very transparent white (Glass effect) with a thin border
-        String styleNormal = "-fx-background-color: rgba(255, 255, 255, 0.3);" +
+        // 卡片样式
+        String styleNormal = "-fx-background-color: rgba(255,255,255,0.3);" +
                 "-fx-background-radius: 15px;" +
-                "-fx-border-color: rgba(255, 255, 255, 0.6);" +
+                "-fx-border-color: rgba(255,255,255,0.6);" +
                 "-fx-border-radius: 15px;" +
                 "-fx-border-width: 1px;";
-
-        // 2. Hover State: Slightly darker/more opaque to look "active"
-        String styleHover = "-fx-background-color: rgba(255, 255, 255, 0.6);" +
+        String styleHover = "-fx-background-color: rgba(255,255,255,0.6);" +
                 "-fx-background-radius: 15px;" +
                 "-fx-border-color: #ffffff;" +
                 "-fx-border-radius: 15px;" +
                 "-fx-border-width: 1px;" +
-                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);"; // Add shadow on hover
+                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10,0,0,2);";
 
-        // Apply initial style
         card.setStyle(styleNormal);
+        card.setOnMouseEntered(e -> { card.setStyle(styleHover); card.setCursor(javafx.scene.Cursor.HAND); });
+        card.setOnMouseExited(e -> card.setStyle(styleNormal));
 
-        // --- HOVER INTERACTION ---
-        // When mouse enters, switch to Hover Style
-        card.setOnMouseEntered(e -> {
-            card.setStyle(styleHover);
-            card.setCursor(javafx.scene.Cursor.HAND); // Change cursor to hand to show it's clickable
-        });
-
-        // When mouse leaves, switch back to Normal Style
-        card.setOnMouseExited(e -> {
-            card.setStyle(styleNormal);
-        });
-
-        // --- CARD CONTENT ---
+        // Header
         HBox header = new HBox();
         header.setAlignment(Pos.CENTER_LEFT);
-
-        Label timestampLabel = new Label(date.atTime(14, 39).format(dateFormatter));
+        Label timestampLabel = new Label(entry.getDate().format(dateFormatter));
         timestampLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #222222;");
-
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        Label metadataLabel = new Label("Mood: Positive | Weather: Sunny");
+        Label metadataLabel = new Label("Mood: " + entry.getMood() + " | Weather: " + entry.getWeather());
         metadataLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #555555;");
-
         header.getChildren().addAll(timestampLabel, spacer, metadataLabel);
 
-        // Truncate text for preview
-        String previewText = content.replace("\n", " ");
-        if (previewText.length() > 60) previewText = previewText.substring(0, 60) + "...";
-
-        Label contentLabel = new Label(previewText);
+        // Content 显示和编辑
+        Label contentLabel = new Label(entry.getContent());
         contentLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #444444; -fx-padding-top: 5px;");
         contentLabel.setWrapText(true);
 
-        card.getChildren().addAll(header, contentLabel);
+        TextArea editArea = new TextArea(entry.getContent());
+        editArea.setWrapText(true);
+        editArea.setPrefHeight(80);
+        editArea.setVisible(false);
+
+        // Buttons
+        HBox buttonBox = new HBox(10);
+        buttonBox.setAlignment(Pos.CENTER_LEFT);
+        Button editBtn = new Button("Edit");
+        Button saveBtn = new Button("Save");
+        Button deleteBtn = new Button("Delete");
+        saveBtn.setVisible(false);
+        buttonBox.getChildren().addAll(editBtn, saveBtn, deleteBtn);
+
+        // Edit 按钮事件
+        editBtn.setOnAction(e -> {
+            contentLabel.setVisible(false);
+            editArea.setVisible(true);
+            editBtn.setVisible(false);
+            saveBtn.setVisible(true);
+        });
+
+        // Save 按钮事件
+        saveBtn.setOnAction(e -> {
+            String newContent = editArea.getText().trim();
+            if (!newContent.isEmpty()) {
+                UserEntries.editEntry(entry.getId(), entry.getDate(), newContent, entry.getMood(), entry.getWeather());
+                refresh();
+            }
+        });
+
+        // Delete 按钮事件
+        deleteBtn.setOnAction(e -> {
+            UserEntries.deleteEntry(entry.getId());
+            refresh();
+        });
+
+        card.getChildren().addAll(header, contentLabel, editArea, buttonBox);
         return card;
     }
 }
+
