@@ -24,7 +24,7 @@ public class JournalPageController {
         loadEntries();
     }
 
-    // 加载日记列表
+    // Load entry
     private void loadEntries() {
         diaryEntries.clear();
         List<Entry> entries = userEntries.listEntries();
@@ -33,12 +33,11 @@ public class JournalPageController {
         diaryEntries.addAll(entries);
     }
 
-    // 页面刷新方法
+    // Page reload
     public void refresh() {
         loadEntries();
     }
 
-    // 返回页面视图
     public VBox getView() {
         VBox contentBox = new VBox(10);
         contentBox.setPadding(new Insets(30, 50, 30, 50));
@@ -58,7 +57,7 @@ public class JournalPageController {
         journalListContainer.setPadding(new Insets(10, 0, 0, 0));
         journalListContainer.setStyle("-fx-background-color: transparent;");
 
-        // 动态加载每条日记
+        // Entry Journal
         for (Entry entry : diaryEntries) {
             journalListContainer.getChildren().add(createJournalCard(entry));
         }
@@ -74,7 +73,7 @@ public class JournalPageController {
         VBox card = new VBox(5);
         card.setPadding(new Insets(15, 20, 15, 20));
 
-        // 卡片样式
+        // Card Pattern
         String styleNormal = "-fx-background-color: rgba(255,255,255,0.3);" +
                 "-fx-background-radius: 15px;" +
                 "-fx-border-color: rgba(255,255,255,0.6);" +
@@ -102,7 +101,6 @@ public class JournalPageController {
         metadataLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #555555;");
         header.getChildren().addAll(timestampLabel, spacer, metadataLabel);
 
-        // Content 显示和编辑
         Label contentLabel = new Label(entry.getContent());
         contentLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #444444; -fx-padding-top: 5px;");
         contentLabel.setWrapText(true);
@@ -121,7 +119,7 @@ public class JournalPageController {
         saveBtn.setVisible(false);
         buttonBox.getChildren().addAll(editBtn, saveBtn, deleteBtn);
 
-        // Edit 按钮事件
+        // Edit Button
         editBtn.setOnAction(e -> {
             contentLabel.setVisible(false);
             editArea.setVisible(true);
@@ -129,7 +127,7 @@ public class JournalPageController {
             saveBtn.setVisible(true);
         });
 
-        // Save 按钮事件
+        // Save Button
         saveBtn.setOnAction(e -> {
             String newContent = editArea.getText().trim();
             if (!newContent.isEmpty()) {
@@ -138,7 +136,7 @@ public class JournalPageController {
             }
         });
 
-        // Delete 按钮事件
+        // Delete Button
         deleteBtn.setOnAction(e -> {
             UserEntries.deleteEntry(entry.getId());
             refresh();
